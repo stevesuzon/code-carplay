@@ -6,12 +6,5 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS"
-  },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "carplay-metiers",
-      "database_id": "8c139641-68af-44cc-aa8f-2a68af669c4a"
-    }
-  ]
+  }
 }

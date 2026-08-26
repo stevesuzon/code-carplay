@@ -1,10 +1,11 @@
-CARPLAY — GÉNÉRATEUR 6 CARACTÈRES ALPHANUMÉRIQUES
+CORRECTION IMPORTANTE
+Le générateur n'écrit plus directement dans D1.
+Il envoie maintenant les créations/renouvellements/déblocages à l'API officielle de l'application:
+https://carplay-telephone.appli-suzon.workers.dev
 
-- Codes : 6 caractères lettres + chiffres (ex. K7R4M2)
-- 365 jours / À vie / Déblocage appareils
-- Un code non expiré reste réservé même s’il est désactivé
-- Un code expiré peut être réactivé avec le même code pour 365 jours
-- Une licence à vie ne redevient jamais disponible automatiquement
-- 1 autoradio + 1 téléphone par code
-- D1 : carplay-metiers
-- Secret : ADMIN_SECRET à configurer dans Cloudflare
+Cela garantit que le hash CODE_PEPPER, les dates d'expiration et les appareils sont gérés exactement comme l'application.
+
+Les caractères 0, 1, O et I sont automatiquement remplacés pour rester compatibles.
+Les codes ont 6 caractères et le générateur ajoute automatiquement au moins 2 lettres.
+
+MISE À JOUR : les lettres apparaissent directement dans le champ. À 6 caractères, le code contient au moins 2 lettres.
