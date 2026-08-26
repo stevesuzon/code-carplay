@@ -8,20 +8,42 @@
 <div class="header"><div class="carplayLogo"><div class="logoMark"><div class="logoBadge">CP</div><div class="logoWord">CAR<span>PLAY</span></div></div><div class="logoSub">NOIR • ROUGE</div></div><h1>CarPlay Travaille</h1><div class="subtitle">Générateur privé</div></div>
 <div class="card">
 <div class="label">SECRET ADMINISTRATEUR</div><input id="secret" type="password" autocomplete="current-password">
-<div class="label">CODE UNIQUE À FOURNIR</div><input id="req" inputmode="text" autocapitalize="characters" autocomplete="off" maxlength="7" placeholder="K7R 4M2"><div style="margin-top:7px;color:#aeb5c0;font-size:13px;font-weight:800;text-align:center">6 caractères • lettres + chiffres • exemple K7R4M2</div>
+<div class="label">CODE UNIQUE À FOURNIR</div><input id="req" inputmode="text" autocapitalize="characters" autocomplete="off" maxlength="7" placeholder="K7R 4M2"><div style="margin-top:7px;color:#aeb5c0;font-size:13px;font-weight:800;text-align:center">6 caractères • les lettres sont ajoutées automatiquement • exemple 12K4M6</div>
 <div class="buttons"><button class="year" id="yearBtn">ACTIVER 365 JOURS</button><button class="life" id="lifeBtn">ACTIVER À VIE</button><button class="unlock" id="unlockBtn">🔓 CODE DE DÉBLOCAGE</button><button class="erase" id="eraseBtn">EFFACER</button></div>
 <div id="result" class="result"><div class="small">CODE À DONNER</div><div id="out" class="code">--- ---</div><div id="type" class="type"></div><button id="copyBtn" class="copy">COPIER LE CODE</button></div><div id="status" class="status"></div>
 </div><div class="card private"><div class="privateTitle">🔒 GÉNÉRATEUR PRIVÉ</div><div class="privateText">365 jours • À vie • Déblocage des appareils<br>Un code autorise exactement 1 autoradio et 1 téléphone.</div></div>
 </div><script>
 const API="";const $=id=>document.getElementById(id);
+const SAFE_LETTERS="ABCDEFGHJKLMNPQRSTUVWXYZ";
 function clean(v){return String(v||"").toUpperCase().replace(/[^A-Z0-9]/g,"").replace(/[OI]/g,c=>c==="O"?"Q":"L").slice(0,6)}
 function format(v){v=clean(v);return v.length>3?v.slice(0,3)+" "+v.slice(3):v}
-$("req").addEventListener("input",e=>e.target.value=format(e.target.value));
+function randomLetter(){return SAFE_LETTERS[Math.floor(Math.random()*SAFE_LETTERS.length)]}
+function ensureMixed(v){
+  let a=clean(v).split("");
+  if(a.length!==6)return a.join("");
+  let letterCount=a.filter(c=>/[A-Z]/.test(c)).length;
+  const digitPositions=()=>a.map((c,i)=>/\d/.test(c)?i:-1).filter(i=>i>=0);
+  while(letterCount<2){
+    const pos=digitPositions();
+    if(!pos.length)break;
+    const i=pos[Math.floor(Math.random()*pos.length)];
+    a[i]=randomLetter();
+    letterCount++;
+  }
+  return a.join("");
+}
+$("req").addEventListener("input",e=>{
+  const raw=clean(e.target.value);
+  if(raw.length===6){
+    const mixed=ensureMixed(raw);
+    e.target.value=format(mixed);
+  }else e.target.value=format(raw);
+});
 async function call(path,payload){const r=await fetch(API+path,{method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+$("secret").value},body:JSON.stringify(payload)});let j={};try{j=await r.json()}catch{}if(!r.ok)throw j;return j}
 function display(code,label,color){$("out").textContent=format(code);$("type").textContent=label;$("type").style.color=color;$("result").classList.add("show");$("status").textContent=""}
-async function create(life){const code=clean($("req").value);if(code.length!==6){$("status").textContent="CODE INVALIDE — ENTREZ 6 LETTRES/CHIFFRES";return} $("status").textContent="ENREGISTREMENT…";try{await call("/api/admin/subscriptions",{code,lifetime:life,days:365});display(code,life?"LICENCE À VIE — 1 AUTORADIO + 1 TÉLÉPHONE":"LICENCE 365 JOURS — 1 AUTORADIO + 1 TÉLÉPHONE",life?"#39e58d":"#58c8ff")}catch(e){$("status").textContent=e.error==="CODE_DEJA_UTILISE"?"CE CODE EXISTE DÉJÀ — ENCORE RÉSERVÉ":"SECRET INCORRECT OU ERREUR SERVEUR"}}
+async function create(life){let code=clean($("req").value);if(code.length!==6){$("status").textContent="CODE INVALIDE — ENTREZ 6 CARACTÈRES";return} code=ensureMixed(code);$("req").value=format(code);$("status").textContent="ENREGISTREMENT…";try{await call("/api/admin/subscriptions",{code,lifetime:life,days:365});display(code,life?"LICENCE À VIE — 1 AUTORADIO + 1 TÉLÉPHONE":"LICENCE 365 JOURS — 1 AUTORADIO + 1 TÉLÉPHONE",life?"#39e58d":"#58c8ff")}catch(e){$("status").textContent=e.error==="CODE_DEJA_UTILISE"?"CE CODE EXISTE DÉJÀ — ENCORE RÉSERVÉ":"SECRET INCORRECT OU ERREUR SERVEUR"}}
 $("yearBtn").onclick=()=>create(false);$("lifeBtn").onclick=()=>create(true);
-$("unlockBtn").onclick=async()=>{const code=clean($("req").value);if(code.length!==6){$("status").textContent="CODE INVALIDE — ENTREZ 6 LETTRES/CHIFFRES";return}$("status").textContent="DÉBLOCAGE…";try{await call("/api/admin/subscriptions/action",{code,action:"reset_devices"});display(code,"CODE DÉBLOQUÉ — 1 NOUVEL AUTORADIO + 1 NOUVEAU TÉLÉPHONE","#ffb24d")}catch(e){$("status").textContent=e.error==="CODE_INTROUVABLE"?"CODE INTROUVABLE":"SECRET INCORRECT OU ERREUR SERVEUR"}};
+$("unlockBtn").onclick=async()=>{const code=clean($("req").value);if(code.length!==6){$("status").textContent="CODE INVALIDE — ENTREZ 6 CARACTÈRES";return}$("status").textContent="DÉBLOCAGE…";try{await call("/api/admin/subscriptions/action",{code,action:"reset_devices"});display(code,"CODE DÉBLOQUÉ — 1 NOUVEL AUTORADIO + 1 NOUVEAU TÉLÉPHONE","#ffb24d")}catch(e){$("status").textContent=e.error==="CODE_INTROUVABLE"?"CODE INTROUVABLE":"SECRET INCORRECT OU ERREUR SERVEUR"}};
 $("eraseBtn").onclick=()=>{$("req").value="";$("out").textContent="--- ---";$("type").textContent="";$("result").classList.remove("show");$("status").textContent="";$("req").focus()};
 $("copyBtn").onclick=async()=>{const code=clean($("out").textContent);if(code.length!==6)return;try{await navigator.clipboard.writeText(code);$("copyBtn").textContent="COPIÉ ✓";setTimeout(()=>$("copyBtn").textContent="COPIER LE CODE",1200)}catch{$("status").textContent="COPIE IMPOSSIBLE"}};
 </script></body></html>
