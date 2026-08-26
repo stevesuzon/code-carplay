@@ -9,9 +9,11 @@
   },
   "d1_databases": [
     {
-      "binding": "DB",
-      "database_name": "REMPLACE_PAR_TA_BASE_D1",
-      "database_id": "REMPLACE_PAR_ID_D1"
+  "binding": "DB",
+"database_name": "carplay-metiers",
+"database_id": "8c139641-68af-44cc-aa8f-2a68af669c4a"
+
+  
     }
   ]
 }
