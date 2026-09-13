@@ -1,4 +1,5 @@
 {
+  // Déploiement Cloudflare forcé — configuration photo R2 conservée.
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "carplay-telephone",
   "main": "src/index.js",
