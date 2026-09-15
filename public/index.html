@@ -1,1 +1,131 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#b40000"><title>CarPlay Travaille</title><style>*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:#05070b;color:#fff}body{padding:20px 14px}.wrap{max-width:720px;margin:auto}.notice,.card{border:3px solid #30394a;border-radius:24px;padding:18px;margin-bottom:15px;background:#0b1019}.notice{text-align:center;border-color:#ffb022;color:#ffd27a;font-weight:900}.header{text-align:center}h1{font-size:34px;margin:15px 0 4px}.subtitle{color:#bbb}.label{font-size:18px;font-weight:900;margin:20px 0 8px}input{width:100%;height:72px;border:3px solid #ff3434;background:#030509;color:#fff;border-radius:18px;text-align:center;font-size:30px;font-weight:900;letter-spacing:4px;text-transform:uppercase}.buttons{display:grid;gap:12px;margin-top:15px}button{border:0;border-radius:18px;min-height:70px;color:#fff;font-size:20px;font-weight:900}.year{background:#176be0}.life{background:#0c9852}.unlock{background:#c87500}.erase{background:#202733}.result{display:none;margin-top:16px;border:3px solid #f0a529;border-radius:20px;padding:18px;text-align:center}.result.show{display:block}.code{font-size:42px;letter-spacing:5px;font-weight:1000}.status{text-align:center;font-weight:900;margin-top:12px;min-height:24px}.copy{width:100%;background:#d51c1c}</style></head><body><div class="wrap"><div class="notice">CHAQUE CODE EST VALABLE POUR<br>1 AUTORADIO ET 1 TÉLÉPHONE</div><div class="header"><h1>CarPlay Travaille</h1><div class="subtitle">Générateur privé</div></div><div class="card"><div class="label">SECRET ADMINISTRATEUR</div><input id="secret" type="password" autocomplete="current-password"><div class="label">CODE UNIQUE À FOURNIR</div><input id="req" inputmode="text" autocomplete="off" maxlength="7"><div class="buttons"><button class="year" id="yearBtn">ACTIVER 365 JOURS</button><button class="life" id="lifeBtn">ACTIVER À VIE</button><button class="unlock" id="unlockBtn">🔓 CODE DE DÉBLOCAGE</button><button class="erase" id="eraseBtn">EFFACER</button></div><div id="result" class="result"><div>CODE À DONNER</div><div id="out" class="code">--- ---</div><div id="type"></div><button id="copyBtn" class="copy">COPIER LE CODE</button></div><div id="status" class="status"></div></div></div><script>const API='https://carplay-telephone.appli-suzon.workers.dev';const $=id=>document.getElementById(id);function clean(v){return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)}function format(v){v=clean(v);return v.length>3?v.slice(0,3)+' '+v.slice(3):v}function randomCode(){const letters='ABCDEFGHJKLMNPQRSTUVWXYZ',digits='0123456789',all=letters+digits;let a=[letters[Math.floor(Math.random()*letters.length)],digits[Math.floor(Math.random()*10)]];while(a.length<6)a.push(all[Math.floor(Math.random()*all.length)]);for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a.join('')}function newCode(){const c=randomCode();$('req').value=format(c);return c}$('req').addEventListener('input',e=>e.target.value=format(e.target.value));newCode();async function call(path,payload){const r=await fetch(API+path,{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+$('secret').value},body:JSON.stringify(payload)});let j={};try{j=await r.json()}catch{}if(!r.ok)throw j;return j}function display(code,label){$('out').textContent=format(code);$('type').textContent=label;$('result').classList.add('show');$('status').textContent=''}async function create(life){$('result').classList.remove('show');$('status').textContent='RECHERCHE D’UN CODE LIBRE…';for(let essai=1;essai<=30;essai++){const code=randomCode();$('req').value=format(code);try{await call('/api/admin/subscriptions',{code,lifetime:life,days:365});display(code,life?'LICENCE À VIE — 1 AUTORADIO + 1 TÉLÉPHONE':'LICENCE 365 JOURS — 1 AUTORADIO + 1 TÉLÉPHONE');return}catch(e){if(e.error==='CODE_DEJA_UTILISE'){continue}$('status').textContent=e.error==='SECRET_INCORRECT'?'SECRET ADMINISTRATEUR INCORRECT':(e.error||'ERREUR SERVEUR');return}}$('status').textContent='IMPOSSIBLE DE TROUVER UN CODE LIBRE — RÉESSAYEZ'}$('yearBtn').onclick=()=>create(false);$('lifeBtn').onclick=()=>create(true);$('unlockBtn').onclick=async()=>{const code=clean($('req').value);if(code.length!==6){$('status').textContent='CODE INVALIDE';return}try{await call('/api/admin/subscriptions/action',{code,action:'reset_devices'});display(code,'CODE DÉBLOQUÉ — 1 AUTORADIO + 1 TÉLÉPHONE')}catch(e){$('status').textContent=e.error==='CODE_INTROUVABLE'?'CODE INTROUVABLE':e.error==='SECRET_INCORRECT'?'SECRET ADMINISTRATEUR INCORRECT':(e.error||'ERREUR SERVEUR')}};$('eraseBtn').onclick=()=>{newCode();$('result').classList.remove('show');$('status').textContent=''};$('copyBtn').onclick=async()=>{const code=clean($('out').textContent);if(code.length===6)await navigator.clipboard.writeText(code)};</script></body></html>
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#07130d">
+<title>Application Couteau Suisse — Générateur de codes</title>
+<link rel="icon" href="https://carplay-telephone.appli-suzon.workers.dev/couteau-suisse-192.png?v=254">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:#05070b;color:#fff}
+body{padding:20px 14px}
+.wrap{max-width:720px;margin:auto}
+.header{text-align:center;margin:6px 0 18px}
+.appLogo{width:132px;height:132px;border-radius:30px;display:block;margin:0 auto 12px;box-shadow:0 0 28px rgba(0,255,80,.22)}
+h1{font-size:34px;margin:8px 0 4px;line-height:1.05}
+.subtitle{color:#bfc8d5;font-weight:800;font-size:17px}
+.notice,.card{border:3px solid #30394a;border-radius:24px;padding:18px;margin-bottom:15px;background:#0b1019}
+.notice{text-align:center;border-color:#ffb022;color:#ffd27a;font-weight:900;line-height:1.35}
+.notice.mush{border-color:#41db77;color:#9ff8b9;background:#07170d}
+.label{font-size:18px;font-weight:900;margin:20px 0 8px}
+input{width:100%;height:72px;border:3px solid #ff3434;background:#030509;color:#fff;border-radius:18px;text-align:center;font-size:30px;font-weight:900;letter-spacing:4px;text-transform:uppercase}
+.buttons{display:grid;gap:12px;margin-top:15px}
+button{border:0;border-radius:18px;min-height:70px;color:#fff;font-size:20px;font-weight:900;padding:12px;cursor:pointer}
+button:disabled{opacity:.55;cursor:wait}
+.year{background:#176be0}
+.life{background:#0c9852}
+.mushroom{background:#28763d;border:2px solid #56e27d}
+.unlock{background:#c87500}
+.erase{background:#202733}
+.result{display:none;margin-top:16px;border:3px solid #f0a529;border-radius:20px;padding:18px;text-align:center}
+.result.show{display:block}
+.code{font-size:42px;letter-spacing:5px;font-weight:1000;margin:8px 0}
+.status{text-align:center;font-weight:900;margin-top:12px;min-height:24px;white-space:pre-line}
+.copy{width:100%;background:#d51c1c;margin-top:14px}
+.small{font-size:14px;color:#aeb8c7;line-height:1.45;margin-top:12px;text-align:center}
+@media(max-width:480px){h1{font-size:29px}.appLogo{width:112px;height:112px}button{font-size:18px}.code{font-size:36px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <img class="appLogo" src="https://carplay-telephone.appli-suzon.workers.dev/couteau-suisse-192.png?v=254" alt="Logo Application Couteau Suisse">
+    <h1>APPLICATION COUTEAU SUISSE</h1>
+    <div class="subtitle">Générateur privé de codes</div>
+  </div>
+
+  <div class="notice">🔑 CODE APPLICATION<br>1 AUTORADIO + 1 TÉLÉPHONE</div>
+  <div class="notice mush">🍄 CODE CHAMPIGNONS<br>2 ANS — 50 € — UTILISABLE UNE SEULE FOIS</div>
+
+  <div class="card">
+    <div class="label">SECRET ADMINISTRATEUR</div>
+    <input id="secret" type="password" autocomplete="current-password">
+
+    <div class="label">CODE APPLICATION À FOURNIR / DÉBLOQUER</div>
+    <input id="req" inputmode="text" autocomplete="off" maxlength="7">
+
+    <div class="buttons">
+      <button class="year" id="yearBtn">ACTIVER L’APPLICATION — 365 JOURS</button>
+      <button class="life" id="lifeBtn">ACTIVER L’APPLICATION — À VIE</button>
+      <button class="mushroom" id="mushroomBtn">🍄 GÉNÉRER CODE CHAMPIGNONS — 2 ANS</button>
+      <button class="unlock" id="unlockBtn">🔓 DÉBLOQUER UN CODE APPLICATION</button>
+      <button class="erase" id="eraseBtn">EFFACER</button>
+    </div>
+
+    <div id="result" class="result">
+      <div>CODE À DONNER</div>
+      <div id="out" class="code">--- ---</div>
+      <div id="type"></div>
+      <button id="copyBtn" class="copy">COPIER LE CODE</button>
+    </div>
+    <div id="status" class="status"></div>
+    <div class="small">Les codes Champignons sont générés ici uniquement. Ils ajoutent 2 ans à l’accès Champignons lorsqu’ils sont activés dans Couteau Suisse.</div>
+  </div>
+</div>
+<script>
+const API='https://carplay-telephone.appli-suzon.workers.dev';
+const $=id=>document.getElementById(id);
+function clean(v){return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)}
+function format(v){v=clean(v);return v.length>3?v.slice(0,3)+' '+v.slice(3):v}
+function randomCode(){const letters='ABCDEFGHJKLMNPQRSTUVWXYZ',digits='0123456789',all=letters+digits;let a=[letters[Math.floor(Math.random()*letters.length)],digits[Math.floor(Math.random()*10)]];while(a.length<6)a.push(all[Math.floor(Math.random()*all.length)]);for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a.join('')}
+function newCode(){const c=randomCode();$('req').value=format(c);return c}
+$('req').addEventListener('input',e=>e.target.value=format(e.target.value));
+newCode();
+async function call(path,payload){
+  const r=await fetch(API+path,{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+$('secret').value},body:JSON.stringify(payload)});
+  let j={};try{j=await r.json()}catch{}
+  if(!r.ok)throw j;
+  return j;
+}
+function display(code,label){$('out').textContent=format(code);$('type').textContent=label;$('result').classList.add('show');$('status').textContent=''}
+async function createMain(life){
+  $('result').classList.remove('show');$('status').textContent='RECHERCHE D’UN CODE LIBRE…';
+  for(let essai=1;essai<=30;essai++){
+    const code=randomCode();$('req').value=format(code);
+    try{
+      await call('/api/admin/subscriptions',{code,lifetime:life,days:365});
+      display(code,life?'APPLICATION COUTEAU SUISSE — À VIE — 1 AUTORADIO + 1 TÉLÉPHONE':'APPLICATION COUTEAU SUISSE — 365 JOURS — 1 AUTORADIO + 1 TÉLÉPHONE');
+      return;
+    }catch(e){
+      if(e.error==='CODE_DEJA_UTILISE')continue;
+      $('status').textContent=e.error==='SECRET_INCORRECT'?'SECRET ADMINISTRATEUR INCORRECT':(e.error||'ERREUR SERVEUR');
+      return;
+    }
+  }
+  $('status').textContent='IMPOSSIBLE DE TROUVER UN CODE LIBRE — RÉESSAYEZ';
+}
+async function createMushroom(){
+  $('result').classList.remove('show');$('status').textContent='GÉNÉRATION DU CODE CHAMPIGNONS…';$('mushroomBtn').disabled=true;
+  try{
+    const j=await call('/api/admin/subscriptions',{kind:'mushroom',generate:true});
+    const code=clean(j.code);
+    if(code.length!==6)throw {error:'CODE_CHAMPIGNONS_INVALIDE'};
+    display(code,'🍄 CHAMPIGNONS — 2 ANS — 50 € — UTILISABLE UNE SEULE FOIS');
+  }catch(e){
+    const err=e&&e.error?e.error:'ERREUR SERVEUR';
+    $('status').textContent=err==='SECRET_INCORRECT'?'SECRET ADMINISTRATEUR INCORRECT':err==='CODE_GENERATION_IMPOSSIBLE'?'IMPOSSIBLE DE GÉNÉRER LE CODE CHAMPIGNONS':err;
+  }finally{$('mushroomBtn').disabled=false}
+}
+$('yearBtn').onclick=()=>createMain(false);
+$('lifeBtn').onclick=()=>createMain(true);
+$('mushroomBtn').onclick=createMushroom;
+$('unlockBtn').onclick=async()=>{
+  const code=clean($('req').value);if(code.length!==6){$('status').textContent='CODE INVALIDE';return}
+  try{await call('/api/admin/subscriptions/action',{code,action:'reset_devices'});display(code,'CODE APPLICATION DÉBLOQUÉ — 1 AUTORADIO + 1 TÉLÉPHONE')}catch(e){$('status').textContent=e.error==='CODE_INTROUVABLE'?'CODE INTROUVABLE':e.error==='SECRET_INCORRECT'?'SECRET ADMINISTRATEUR INCORRECT':(e.error||'ERREUR SERVEUR')}
+};
+$('eraseBtn').onclick=()=>{newCode();$('result').classList.remove('show');$('status').textContent=''};
+$('copyBtn').onclick=async()=>{const code=clean($('out').textContent);if(code.length===6){try{await navigator.clipboard.writeText(code);$('status').textContent='✅ CODE COPIÉ'}catch{$('status').textContent='CODE : '+format(code)}}};
+</script>
+</body>
+</html>
