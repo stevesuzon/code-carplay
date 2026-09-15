@@ -46,7 +46,7 @@ button:disabled{opacity:.55;cursor:wait}
   </div>
 
   <div class="notice">🔑 CODE APPLICATION<br>1 AUTORADIO + 1 TÉLÉPHONE</div>
-  <div class="notice mush">🍄 CODE CHAMPIGNONS<br>2 ANS — 50 € — UTILISABLE UNE SEULE FOIS</div>
+  <div class="notice mush">🍄 CODE CHAMPIGNONS<br>1 AN — 50 € — UTILISABLE UNE SEULE FOIS</div>
 
   <div class="card">
     <div class="label">SECRET ADMINISTRATEUR</div>
@@ -58,7 +58,7 @@ button:disabled{opacity:.55;cursor:wait}
     <div class="buttons">
       <button class="year" id="yearBtn">ACTIVER L’APPLICATION — 365 JOURS</button>
       <button class="life" id="lifeBtn">ACTIVER L’APPLICATION — À VIE</button>
-      <button class="mushroom" id="mushroomBtn">🍄 GÉNÉRER CODE CHAMPIGNONS — 2 ANS</button>
+      <button class="mushroom" id="mushroomBtn">🍄 GÉNÉRER CODE CHAMPIGNONS — 1 AN</button>
       <button class="unlock" id="unlockBtn">🔓 DÉBLOQUER UN CODE APPLICATION</button>
       <button class="erase" id="eraseBtn">EFFACER</button>
     </div>
@@ -70,7 +70,7 @@ button:disabled{opacity:.55;cursor:wait}
       <button id="copyBtn" class="copy">COPIER LE CODE</button>
     </div>
     <div id="status" class="status"></div>
-    <div class="small">Les codes Champignons sont générés ici uniquement. Ils ajoutent 2 ans à l’accès Champignons lorsqu’ils sont activés dans Couteau Suisse.</div>
+    <div class="small">Les codes Champignons sont générés ici uniquement. Ils ajoutent 1 an à l’accès Champignons lorsqu’ils sont activés dans Couteau Suisse.</div>
   </div>
 </div>
 <script>
@@ -111,7 +111,7 @@ async function createMushroom(){
     const j=await call('/api/admin/subscriptions',{kind:'mushroom',generate:true});
     const code=clean(j.code);
     if(code.length!==6)throw {error:'CODE_CHAMPIGNONS_INVALIDE'};
-    display(code,'🍄 CHAMPIGNONS — 2 ANS — 50 € — UTILISABLE UNE SEULE FOIS');
+    display(code,'🍄 CHAMPIGNONS — 1 AN — 50 € — UTILISABLE UNE SEULE FOIS');
   }catch(e){
     const err=e&&e.error?e.error:'ERREUR SERVEUR';
     $('status').textContent=err==='SECRET_INCORRECT'?'SECRET ADMINISTRATEUR INCORRECT':err==='CODE_GENERATION_IMPOSSIBLE'?'IMPOSSIBLE DE GÉNÉRER LE CODE CHAMPIGNONS':err;
