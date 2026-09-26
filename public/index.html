@@ -46,7 +46,7 @@ button:disabled{opacity:.55;cursor:wait}
   </div>
 
   <div class="notice">🔑 CODE APPLICATION<br>1 AUTORADIO + 1 TÉLÉPHONE</div>
-  <div class="notice mush">🍄 CODE CHAMPIGNONS<br>À VIE — 50 € — UTILISABLE UNE SEULE FOIS</div>
+  <div class="notice mush">🍄 CODE CHAMPIGNONS<br>365 JOURS — 50 € — UTILISABLE UNE SEULE FOIS</div>
 
   <div class="card">
     <div class="label">SECRET ADMINISTRATEUR</div>
@@ -58,7 +58,7 @@ button:disabled{opacity:.55;cursor:wait}
     <div class="buttons">
       <button class="year" id="yearBtn">ACTIVER L’APPLICATION — 365 JOURS</button>
       <button class="life" id="lifeBtn">ACTIVER L’APPLICATION — À VIE</button>
-      <button class="mushroom" id="mushroomBtn">🍄 GÉNÉRER CODE CHAMPIGNONS — À VIE</button>
+      <button class="mushroom" id="mushroomBtn">🍄 GÉNÉRER CODE CHAMPIGNONS — 365 JOURS</button>
       <button class="unlock" id="unlockBtn">🔓 DÉBLOQUER UN CODE APPLICATION</button>
       <button class="erase" id="eraseBtn">EFFACER</button>
     </div>
@@ -70,7 +70,7 @@ button:disabled{opacity:.55;cursor:wait}
       <button id="copyBtn" class="copy">COPIER LE CODE</button>
     </div>
     <div id="status" class="status"></div>
-    <div class="small">Les codes Champignons sont générés ici uniquement. Une fois activés dans l’application Champignons, ils donnent un accès à vie.</div>
+    <div class="small">Les codes Champignons sont générés ici uniquement. Chaque code active Champignons pendant 365 jours. À la fin, l’application se verrouille et demande un nouveau code.</div>
   </div>
 </div>
 <script>
@@ -106,12 +106,20 @@ async function createMain(life){
   $('status').textContent='IMPOSSIBLE DE TROUVER UN CODE LIBRE — RÉESSAYEZ';
 }
 async function createMushroom(){
-  $('result').classList.remove('show');$('status').textContent='GÉNÉRATION DU CODE CHAMPIGNONS…';$('mushroomBtn').disabled=true;
+  $('result').classList.remove('show');$('status').textContent='GÉNÉRATION DU CODE CHAMPIGNONS — 365 JOURS…';$('mushroomBtn').disabled=true;
   try{
-    const j=await call('/api/admin/subscriptions',{kind:'mushroom',generate:true,lifetime:true,days:36500});
-    const code=clean(j.code);
-    if(code.length!==6)throw {error:'CODE_CHAMPIGNONS_INVALIDE'};
-    display(code,'🍄 CHAMPIGNONS — À VIE — 50 € — UTILISABLE UNE SEULE FOIS');
+    for(let essai=1;essai<=30;essai++){
+      const code=randomCode();$('req').value=format(code);
+      try{
+        await call('/api/admin/subscriptions',{code,kind:'mushroom',lifetime:false,days:365});
+        display(code,'🍄 CHAMPIGNONS — 365 JOURS — 50 € — UTILISABLE UNE SEULE FOIS');
+        return;
+      }catch(e){
+        if(e&&e.error==='CODE_DEJA_UTILISE')continue;
+        throw e;
+      }
+    }
+    throw {error:'CODE_GENERATION_IMPOSSIBLE'};
   }catch(e){
     const err=e&&e.error?e.error:'ERREUR SERVEUR';
     $('status').textContent=err==='SECRET_INCORRECT'?'SECRET ADMINISTRATEUR INCORRECT':err==='CODE_GENERATION_IMPOSSIBLE'?'IMPOSSIBLE DE GÉNÉRER LE CODE CHAMPIGNONS':err;
