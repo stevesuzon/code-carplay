@@ -46,7 +46,7 @@ button:disabled{opacity:.55;cursor:wait}
   </div>
 
   <div class="notice">🔑 CODE APPLICATION<br>1 AUTORADIO + 1 TÉLÉPHONE</div>
-  <div class="notice mush">🍄 CODE CHAMPIGNONS<br>365 JOURS — 50 € — UTILISABLE UNE SEULE FOIS</div>
+  <div class="notice mush">🍄 CODE CHAMPIGNONS<br>365 JOURS — 10 € — UTILISABLE UNE SEULE FOIS</div>
 
   <div class="card">
     <div class="label">SECRET ADMINISTRATEUR</div>
@@ -112,7 +112,7 @@ async function createMushroom(){
       const code=randomCode();$('req').value=format(code);
       try{
         await call('/api/admin/subscriptions',{code,kind:'mushroom',lifetime:false,days:365});
-        display(code,'🍄 CHAMPIGNONS — 365 JOURS — 50 € — UTILISABLE UNE SEULE FOIS');
+        display(code,'🍄 CHAMPIGNONS — 365 JOURS — 10 € — UTILISABLE UNE SEULE FOIS');
         return;
       }catch(e){
         if(e&&e.error==='CODE_DEJA_UTILISE')continue;
