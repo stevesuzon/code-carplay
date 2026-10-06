@@ -56,7 +56,7 @@ button:disabled{opacity:.55;cursor:wait}
     <input id="req" inputmode="text" autocomplete="off" maxlength="7">
 
     <div class="buttons">
-      <button class="year" id="yearBtn">ACTIVER L’APPLICATION — 365 JOURS</button>
+      <button class="year" id="yearBtn">ACTIVER L’APPLICATION — 30 JOURS</button>
       <button class="life" id="lifeBtn">ACTIVER L’APPLICATION — À VIE</button>
       <button class="mushroom" id="mushroomBtn">🍄 GÉNÉRER CODE CHAMPIGNONS — 365 JOURS</button>
       <button class="unlock" id="unlockBtn">🔓 DÉBLOQUER UN CODE APPLICATION</button>
@@ -94,8 +94,8 @@ async function createMain(life){
   for(let essai=1;essai<=30;essai++){
     const code=randomCode();$('req').value=format(code);
     try{
-      await call('/api/admin/subscriptions',{code,lifetime:life,days:365});
-      display(code,life?'APPLICATION COUTEAU SUISSE — À VIE — 1 AUTORADIO + 1 TÉLÉPHONE':'APPLICATION COUTEAU SUISSE — 365 JOURS — 1 AUTORADIO + 1 TÉLÉPHONE');
+      await call('/api/admin/subscriptions',{code,lifetime:life,days:30});
+      display(code,life?'APPLICATION COUTEAU SUISSE — À VIE — 1 AUTORADIO + 1 TÉLÉPHONE':'APPLICATION COUTEAU SUISSE — 30 JOURS — 1 AUTORADIO + 1 TÉLÉPHONE');
       return;
     }catch(e){
       if(e.error==='CODE_DEJA_UTILISE')continue;
@@ -111,7 +111,7 @@ async function createMushroom(){
     for(let essai=1;essai<=30;essai++){
       const code=randomCode();$('req').value=format(code);
       try{
-        await call('/api/admin/subscriptions',{code,kind:'mushroom',lifetime:false,days:365});
+        await call('/api/admin/subscriptions',{code,kind:'mushroom',lifetime:false,days:30});
         display(code,'🍄 CHAMPIGNONS — 365 JOURS — 10 € — UTILISABLE UNE SEULE FOIS');
         return;
       }catch(e){
