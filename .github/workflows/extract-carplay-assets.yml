@@ -1,0 +1,22 @@
+name: Extract CarPlay assets
+on:
+  push:
+    paths:
+      - '.github/workflows/extract-carplay-assets.yml'
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract bundle
+        run: |
+          mkdir -p extracted
+          unzip -q CarPlay-TELEPHONE-GITHUB-CLOUDFLARE-V5.zip -d extracted
+          find extracted -maxdepth 3 -type f | sort | head -300
+      - uses: actions/upload-artifact@v4
+        with:
+          name: carplay-extracted
+          path: extracted/
+          retention-days: 1
