@@ -83,7 +83,7 @@ export function patchScript(source){
 
 export default {...previous,async fetch(request,env,ctx){
   const response=await previous.fetch(request,env,ctx);
-  if(new URL(request.url).pathname!=='/nearby-markets.html'||!response.ok||!(response.headers.get('content-type')||'').includes('text/html'))return response;
+  if(!['/nearby-markets.html','/nearby-markets','/nearby-markets/'].includes(new URL(request.url).pathname)||!response.ok||!(response.headers.get('content-type')||'').includes('text/html'))return response;
   let scriptText='';
   const out=new HTMLRewriter()
     .on('html',{element(e){e.setAttribute('data-nearby-layout','1');}})
