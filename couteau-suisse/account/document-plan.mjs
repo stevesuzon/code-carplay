@@ -1,4 +1,4 @@
-import {preferences,preferenceClient} from './preferences.mjs';
+import {preferences,preferenceClient,applyLocationPreference} from './preferences.mjs';
 import {dailyVisits,dailyClient} from './daily-visits.mjs';
 import {addresses} from './address-api.mjs';
 import {addressPage} from './address-page.mjs';
@@ -107,11 +107,13 @@ export function withDocumentPlan(worker,helpers){return {...worker,
    if(path.startsWith('/api/account-inbox/'))await cleanupMessages(env);
    let response=await worker.fetch(request,env,ctx);
    if(!response.ok||request.method!=='GET'||!response.headers.get('content-type')?.includes('text/html'))return response;
+   if(plan?.authenticated)response=await applyLocationPreference(response,env.DB,plan.owner);
    if(!isHome&&!isAdmin&&!papers(path))return response;
    const h=new Headers(response.headers);for(const k of ['etag','content-length','content-encoding'])h.delete(k);h.set('cache-control','private, no-store');
    let rewrite=new HTMLRewriter();
    if(isHome&&plan.authenticated)rewrite=rewrite.on('head',{element(e){e.prepend(planStateMarkup(plan),{html:true})}});
    if(isHome&&plan.authenticated)rewrite=rewrite.on('body',{element(e){e.append('<script defer src="/cs-private-preferences.js"></script>',{html:true})}});
+   if(isHome&&plan.authenticated)rewrite=rewrite.on('#csAccount>.cs-account-content',{element(e){e.prepend('<label style="display:block;padding:12px"><input type="checkbox" id="csAccountLocationAllowed" disabled> Autoriser Couteau Suisse à demander ma position</label><small id="csLocationStatus">Le téléphone garde le contrôle de son autorisation de localisation.</small>',{html:true})}});
    if(isHome&&plan.premium)rewrite=rewrite.on('#csAccount',{element(e){e.before('<a class="settingHead" href="/mes-adresses">Mes adresses</a>',{html:true})}});
    if(isHome&&plan.admin)rewrite=rewrite.on('#csMessages',{element(e){e.remove()}});
    if(isAdmin){

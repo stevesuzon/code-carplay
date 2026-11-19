@@ -28,3 +28,12 @@ for(const [lang,expected] of [['fr','Hallo'],['nl','Bonjour']]){
  assert.equal((await r.json()).translation,expected);
 }
 console.log('OK — adresses, isolation des comptes, suppression, reconnexions, droits admin, minuit et changements d’heure, traduction écrite simulée dans les deux sens.');
+const {preferences,applyLocationPreference}=await import('./account/preferences.mjs');
+const driver={prepare(sql){return {bind(...v){const q=db.prepare(sql);return {run:()=>q.run(...v),all:()=>({results:q.all(...v)}),first:()=>q.get(...v)}}}}};
+await preferences(req('PUT',{name:'cs-location-allowed',value:'false'}),driver,plan);
+assert.equal((await (await preferences(req('GET'),driver,plan)).json())['cs-location-allowed'],'false');
+assert.deepEqual(await (await preferences(req('GET'),driver,other)).json(),{});
+const html=()=>new Response('page',{headers:{'content-type':'text/html','permissions-policy':'camera=(), geolocation=(self)'}});
+assert.equal((await applyLocationPreference(html(),driver,plan.owner)).headers.get('permissions-policy'),'camera=(), geolocation=()');
+assert.equal((await applyLocationPreference(html(),driver,other.owner)).headers.get('permissions-policy'),'camera=(), geolocation=(self)');
+console.log('OK — préférence de localisation par compte et maintien des autorisations natives.');
