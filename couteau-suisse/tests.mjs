@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import {DatabaseSync} from 'node:sqlite';
+import {readFileSync} from 'node:fs';
+import {addresses} from './account/address-api.mjs';
+import {parisDay,recordVisit,dailyVisits} from './account/daily-visits.mjs';
+import {translatorAPI} from './translator-api.mjs';
+const db=new DatabaseSync(':memory:');
+db.exec(readFileSync(new URL('./account/schema.sql',import.meta.url),'utf8'));
+db.exec("CREATE TABLE app_identities(email,created_at,first_name,last_name);INSERT INTO app_identities VALUES('test@invalid',1,'Anne','Test')");
+const DB={prepare(sql){return {bind(...v){const q=db.prepare(sql);return {run:()=>q.run(...v),all:()=>({results:q.all(...v)})}}}}};
+const env={DB,ADDRESS_VAULT_KEY:btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))))};
+const plan={authenticated:true,premium:true,owner:'test@invalid|1'},other={...plan,owner:'other|1'};
+const origin='https://example.test',url=origin+'/api/private-addresses?id='+crypto.randomUUID();
+const req=(method,data)=>new Request(url,{method,headers:{origin},body:data?JSON.stringify(data):undefined});
+const address={name:'Contact',phone:'0102030405',author:'Anne',address:'Adresse de test'};
+assert.equal((await addresses(req('PUT',address),env,plan)).status,200);
+assert.equal((await addresses(req('PUT',address),env,plan)).status,200);
+assert(!db.prepare('select envelope from cs_private_addresses').get().envelope.includes('Contact'));
+assert.equal((await (await addresses(req('GET'),env,plan)).json())[0].address,address.address);
+assert.deepEqual(await (await addresses(req('GET'),env,other)).json(),[]);
+await addresses(req('DELETE'),env,other);assert.equal((await (await addresses(req('GET'),env,plan)).json()).length,1);
+await addresses(req('DELETE'),env,plan);assert.deepEqual(await (await addresses(req('GET'),env,plan)).json(),[]);
+for(const [iso,day] of [['2026-03-28T22:59:59Z','2026-03-28'],['2026-03-28T23:00:00Z','2026-03-29'],['2026-03-29T22:00:00Z','2026-03-30'],['2026-10-24T22:00:00Z','2026-10-25'],['2026-10-25T23:00:00Z','2026-10-26']])assert.equal(parisDay(new Date(iso)),day);
+await Promise.all([recordVisit(DB,plan.owner),recordVisit(DB,plan.owner)]);assert.equal((await (await dailyVisits(DB,{admin:true})).json()).count,1);assert.equal((await dailyVisits(DB,plan)).status,403);
+const apiEnv={APPLICATION:{fetch:()=>Response.json({authenticated:true,premium:true})},AI:{run:(_,input)=>({translated_text:input.target_lang==='nl'?'Hallo':'Bonjour'})}};
+for(const [lang,expected] of [['fr','Hallo'],['nl','Bonjour']]){
+ const r=await translatorAPI(new Request(origin+'/traducteur/api?lang='+lang,{method:'POST',headers:{origin,'content-type':'text/plain'},body:'Test'}),apiEnv);
+ assert.equal((await r.json()).translation,expected);
+}
+console.log('OK — adresses, isolation des comptes, suppression, reconnexions, droits admin, minuit et changements d’heure, traduction écrite simulée dans les deux sens.');
