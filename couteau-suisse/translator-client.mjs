@@ -3,9 +3,17 @@
  const $=id=>document.getElementById(id),buttons={fr:$('talkFr'),nl:$('talkNl')};
  let recording=null,pending=false,revision=0,abort=null,speaking=null,voiceTimer=0,offline=null,installing=false,voiceRevision=0;
  let conversation=false, nextLanguage='fr';
- function continueAfterVoice(){
-  if(conversation) setTimeout(()=>{if(conversation&&!recording&&!pending&&!speaking)void start(nextLanguage,'auto')},220);
+ function turns(active,busy=false){
+  $('turnFr').textContent=active==='fr'?'À vous de parler':busy?'Patientez…':'Maintenez pour parler.';
+  $('turnNl').textContent=active==='nl'?'U bent aan de beurt':busy?'Even geduld…':'Houd ingedrukt om te spreken.';
+  $('conversation').setAttribute('aria-pressed',String(conversation));
  }
+ function continueAfterVoice(){
+  if(!conversation){turns(null);status('');return;}
+  const run=revision;
+  setTimeout(()=>{if(run===revision&&conversation&&!recording&&!pending&&!speaking&&!typing)void start(nextLanguage,'auto')},220);
+ }
+ let typing=false;
  const latest={fr:'',nl:''};
  const status=t=>{$('translatorStatus').textContent=t};
  const text=(lang,value,received)=>{
@@ -19,7 +27,7 @@
   stopVoice();if(!value)return;offline?.unlockAudio();const run=voiceRevision;
   const fallback=async()=>{if(run!==voiceRevision)return;clearTimeout(voiceTimer);speaking=null;try{window.speechSynthesis?.cancel()}catch{}
    try{if(!offline||!await offline.ready())throw Error();if(run!==voiceRevision)return;status(lang==='nl'?'Lecture en flamand…':'Lecture en français…');await offline.speak(lang,value);if(run===voiceRevision)continueAfterVoice();}
-   catch{if(run===voiceRevision){conversation=false;status('Voix indisponible. Touchez Réécouter ou installez les langues.');}}
+   catch{if(run===voiceRevision){conversation=false;turns(null);status('Voix indisponible. Touchez Réécouter ou installez les langues.');}}
   };
   if(!window.speechSynthesis||!window.SpeechSynthesisUtterance){void fallback();return;}
   const u=new SpeechSynthesisUtterance(value),locale=lang==='nl'?'nl-BE':'fr-FR',voices=speechSynthesis.getVoices();
@@ -32,33 +40,31 @@
   u.onerror=()=>{if(speaking===u)retry()};
   try{speechSynthesis.resume();speechSynthesis.speak(u);voiceTimer=setTimeout(()=>{if(speaking===u&&!started)retry()},2500);}catch{retry()}
  }
- function unlockVoice(){offline?.unlockAudio();try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;window.speechSynthesis?.speak(u)}catch{}}
  function stopTracks(state){if(state){clearInterval(state.monitor);if(state.context&&state.context.state!=='closed')void state.context.close().catch(()=>{});state.context=null;}state?.stream?.getTracks().forEach(t=>t.stop());}
  function resetButtons(){for(const b of Object.values(buttons)){b.dataset.recording='false';b.setAttribute('aria-pressed','false');b.disabled=pending;}}
- function cancel(){conversation=false;revision++;abort?.abort();abort=null;pending=false;const state=recording;recording=null;if(state){state.cancelled=true;clearTimeout(state.timer);try{if(state.recorder?.state==='recording')state.recorder.stop()}catch{}stopTracks(state)}stopVoice();resetButtons();}
+ function cancel(){typing=false;conversation=false;revision++;abort?.abort();abort=null;pending=false;const state=recording;recording=null;if(state){state.cancelled=true;clearTimeout(state.timer);try{if(state.recorder?.state==='recording')state.recorder.stop()}catch{}stopTracks(state)}stopVoice();resetButtons();turns(null);}
  async function translate(blob,lang,run){
-  if(run!==revision)return;pending=true;resetButtons();status('Traduction en cours…');
+  if(run!==revision)return;pending=true;turns(null,true);resetButtons();status('Traduction en cours…');
   try{
    let result;
    const local=$('useOffline').checked||!navigator.onLine;
-   if(local && typeof blob==="string")throw Error("La traduction écrite nécessite Internet.");
    if(local){if(!offline||!await offline.ready())throw Error('Téléchargez les langues avec Internet avant de traduire sans réseau.');status('Traduction sur le téléphone…');result=await offline.translate(blob,lang);}
    else{
-    abort=new AbortController();const timer=setTimeout(()=>abort?.abort(),45000);
-    try{const response=await fetch('/traducteur/api?lang='+lang,{method:'POST',headers:{'content-type':typeof blob==='string'?'text/plain;charset=utf-8':blob.type||'audio/mp4'},credentials:'same-origin',cache:'no-store',body:blob,signal:abort.signal});result=await response.json();if(!response.ok)throw Error(result.error||'Traduction indisponible.');}
+    const requestAbort=new AbortController();abort=requestAbort;const timer=setTimeout(()=>requestAbort.abort(),45000);
+    try{const response=await fetch('/traducteur/api?lang='+lang,{method:'POST',headers:{'content-type':typeof blob==='string'?'text/plain;charset=utf-8':blob.type||'audio/mp4'},credentials:'same-origin',cache:'no-store',body:blob,signal:requestAbort.signal});result=await response.json();if(!response.ok)throw Error(result.error||'Traduction indisponible.');}
     catch(error){if(run===revision&&error.name!=='AbortError'&&typeof blob!=='string'&&error instanceof TypeError&&offline&&await offline.ready()){status('Connexion coupée. Traduction sur le téléphone…');result=await offline.translate(blob,lang)}else throw error}
-    finally{clearTimeout(timer);abort=null;}
+    finally{clearTimeout(timer);if(abort===requestAbort)abort=null;}
    }
    if(run!==revision)return;
    if(!result?.text||!result?.translation)throw Error('Je n’ai rien entendu. Recommencez.');
-   const target=lang==='fr'?'nl':'fr';nextLanguage=target;text(lang,result.text,false);text(target,result.translation,true);status('Traduction prête.');voice(target,result.translation);
-  }catch(error){if(run===revision){conversation=false;status(error.name==='AbortError'?'La traduction prend trop de temps. Réessayez.':error.message||'Traduction indisponible.');}}
+   const target=lang==='fr'?'nl':'fr';nextLanguage=target;text(lang,result.text,false);text(target,result.translation,true);status('Traduction prête.');voice(target,result.translation);return true;
+  }catch(error){if(run===revision){conversation=false;turns(null);status(error.name==='AbortError'?'La traduction prend trop de temps. Réessayez.':error.message||'Traduction indisponible.');}return false;}
   finally{if(run===revision){pending=false;resetButtons()}}
  }
  async function start(lang,pointer){
   if(recording||pending||installing)return;
-  stopVoice();
-  if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){status('Ce navigateur ne permet pas l’enregistrement. Ouvrez Couteau Suisse dans Safari ou Chrome.');return;}
+  stopVoice();turns(null,true);
+  if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){cancel();status('Ce navigateur ne permet pas l’enregistrement. Ouvrez Couteau Suisse dans Safari ou Chrome.');return;}
   const run=++revision,state={lang,pointer,run,held:true,cancelled:false,chunks:[],started:0};recording=state;
   status('Autorisation du microphone…');buttons[lang].setAttribute('aria-pressed','true');
   try{
@@ -71,14 +77,14 @@
    const mime=['audio/webm;codecs=opus','audio/mp4','audio/ogg;codecs=opus'].find(t=>MediaRecorder.isTypeSupported(t));
    const recorder=new MediaRecorder(stream,{...(mime?{mimeType:mime}:{}),audioBitsPerSecond:64000});state.recorder=recorder;
    recorder.ondataavailable=e=>{if(e.data?.size)state.chunks.push(e.data)};
-   recorder.onstop=()=>{stopTracks(state);if(state.cancelled||run!==revision)return;const blob=new Blob(state.chunks,{type:recorder.mimeType||mime||'audio/mp4'});state.chunks=[];if(Date.now()-state.started<350||blob.size<100){pending=false;status('Maintenez le bouton pendant votre phrase.');resetButtons();return;}void translate(blob,lang,run);};
+   recorder.onstop=()=>{stopTracks(state);if(state.cancelled||run!==revision)return;const blob=new Blob(state.chunks,{type:recorder.mimeType||mime||'audio/mp4'});state.chunks=[];if(Date.now()-state.started<350||blob.size<100){conversation=false;pending=false;turns(null);status('Maintenez le bouton pendant votre phrase.');resetButtons();return;}void translate(blob,lang,run);};
    recorder.onerror=()=>{if(run===revision){cancel();status('Micro indisponible. Réessayez.');}};
-   recorder.start();state.started=Date.now();buttons[lang].dataset.recording='true';status(lang==='nl'?'Ik luister…':'Je vous écoute…');
+   recorder.start();turns(lang,true);state.started=Date.now();buttons[lang].dataset.recording='true';status(lang==='nl'?'Ik luister…':'Je vous écoute…');
    const analyser=state.context.createAnalyser();analyser.fftSize=1024;
    state.context.createMediaStreamSource(stream).connect(analyser);
    const samples=new Float32Array(analyser.fftSize);
    let lastSpeech=null;
-   state.monitor=setInterval(()=>{
+   if(pointer==='auto')state.monitor=setInterval(()=>{
     analyser.getFloatTimeDomainData(samples);
     let energy=0;for(const sample of samples)energy+=sample*sample;
     const now=performance.now();
@@ -86,26 +92,54 @@
     if(lastSpeech!==null&&now-lastSpeech>=2000)finish(pointer,false);
    },50);
    state.timer=setTimeout(()=>{cancel();status('Temps de micro écoulé. Touchez Parler pour reprendre.');},120000);
-  }catch(error){if(recording===state){conversation=false;recording=null;resetButtons();status(error.name==='NotAllowedError'?'Autorisez le microphone dans les réglages de ce site, puis réessayez.':'Micro indisponible. Réessayez.');}stopTracks(state)}
+  }catch(error){if(recording===state){conversation=false;turns(null);recording=null;resetButtons();status(error.name==='NotAllowedError'?'Autorisez le microphone dans les réglages de ce site, puis réessayez.':'Micro indisponible. Réessayez.');}stopTracks(state)}
  }
  function finish(pointer,cancelled){
   const state=recording;if(!state||state.pointer!==pointer)return;state.held=false;state.cancelled=cancelled;clearTimeout(state.timer);recording=null;
-  if(state.recorder?.state==='recording'){if(!cancelled){pending=true;status('Traduction en cours…');}state.recorder.stop();}
-  stopTracks(state);resetButtons();if(cancelled)status('Enregistrement annulé.');
+  if(state.recorder?.state==='recording'){if(!cancelled){pending=true;turns(null,true);status('Traduction en cours…');}state.recorder.stop();}
+  stopTracks(state);resetButtons();if(cancelled||!pending)turns(null);if(cancelled)status('Enregistrement annulé.');
  }
- for(const [lang,button] of Object.entries(buttons))button.onclick=()=>{
-  cancel();conversation=true;nextLanguage=lang;void start(lang,'auto');
- };
+ for(const [lang,button] of Object.entries(buttons)){
+  const side=lang==='fr'?'Fr':'Nl',input=$('input'+side),send=$('send'+side);
+  button.onpointerdown=e=>{
+   if(!e.isPrimary||e.button!==0)return;e.preventDefault();cancel();offline?.unlockAudio();try{button.setPointerCapture(e.pointerId)}catch{}void start(lang,e.pointerId);
+  };
+  button.onpointerup=e=>finish(e.pointerId,false);
+  button.onpointercancel=button.onlostpointercapture=e=>finish(e.pointerId,true);
+  button.oncontextmenu=e=>e.preventDefault();
+  button.onkeydown=e=>{if((e.key===' '||e.key==='Enter')&&!e.repeat){e.preventDefault();cancel();void start(lang,'key')}};
+  button.onkeyup=e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();finish('key',false)}};
+  input.onfocus=()=>{const resume=conversation;cancel();conversation=resume;typing=true;turns(null,resume);};
+  input.oninput=()=>{send.hidden=!input.value.trim()};
+  $('text'+side).onclick=()=>input.focus();
+  $('form'+side).onsubmit=async e=>{
+   e.preventDefault();const value=input.value.trim();if(!value)return;
+   const resume=conversation;cancel();conversation=resume;input.blur();input.value='';send.hidden=true;
+   const run=revision;const success=await translate(value,lang,run);
+   if(!success&&run===revision&&!input.value){input.value=value;send.hidden=false;}
+  };
+ }
+ $('conversation').onclick=()=>{cancel();offline?.unlockAudio();conversation=true;nextLanguage='fr';void start('fr','auto')};
  $('stopTurn').onclick=()=>{cancel();status('Conversation arrêtée.');};
- $('writeTurn').onclick=()=>{
-  const lang=nextLanguage;
-  const resume=conversation;cancel();
-  const value=window.prompt(lang==='fr'?'Écrivez en français':'Schrijf in het Nederlands');
-  if(value?.trim()){conversation=resume;void translate(value.trim(),lang,revision);}
-  else if(resume){conversation=true;void start(lang,'auto');}
+ const address=$('nlAddress'),addressForm=$('nlAddressForm');let addressAttempt=null;
+ $('openAddress').onclick=()=>{cancel();$('addressResult').textContent='';address.showModal()};
+ $('addressCancel').onclick=()=>address.close();
+ addressForm.onsubmit=async e=>{
+  e.preventDefault();if($('addressSave').disabled)return;
+  const fields=Object.fromEntries(new FormData(addressForm));
+  fields.author=fields.name;
+  // Keep the same payload and ID on a retry after a lost network response.
+  if(!addressAttempt)addressAttempt={id:crypto.randomUUID(),body:JSON.stringify(fields)};
+  for(const input of addressForm.querySelectorAll('input,textarea'))input.readOnly=true;
+  const attempt=addressAttempt;$('addressSave').disabled=true;$('addressCancel').disabled=true;
+  try{
+   const r=await fetch('/api/private-addresses?id='+attempt.id,{method:'PUT',credentials:'same-origin',headers:{'content-type':'application/json'},body:attempt.body});
+   if(!r.ok){if(r.status<500&&r.status!==429){addressAttempt=null;for(const input of addressForm.querySelectorAll('input,textarea'))input.readOnly=false;}throw Error();}addressAttempt=null;for(const input of addressForm.querySelectorAll('input,textarea'))input.readOnly=false;addressForm.reset();address.close();status('Adresse enregistrée dans Mes adresses.');$('turnNl').textContent='Uw adres is opgeslagen.';
+  }catch{$('addressResult').textContent='Opslaan mislukt. Controleer uw verbinding en probeer opnieuw.'}
+  finally{$('addressSave').disabled=false;$('addressCancel').disabled=false}
  };
  for(const lang of ['fr','nl'])$(lang==='fr'?'replayFr':'replayNl').onclick=()=>{
-  const resume=conversation;cancel();conversation=resume;voice(lang,latest[lang]);
+  const resume=conversation;cancel();conversation=resume;turns(null,true);voice(lang,latest[lang]);
  };
  window.addEventListener('pagehide',()=>{cancel();offline?.dispose()});
  document.addEventListener('visibilitychange',()=>{if(document.hidden){cancel();offline?.dispose();status('Micro arrêté. Maintenez le bouton pour reprendre.');}});
