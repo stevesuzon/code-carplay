@@ -1,0 +1,14 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const nodes=new Map(),speech=[],requests=[];let sound=false,clock=0,streams=0,next=0;const jobs=new Map();
+function element(){return {dataset:{},children:[],setAttribute(){},append(){},querySelector(){},addEventListener(){}}}
+function get(id){if(!nodes.has(id))nodes.set(id,element());return nodes.get(id)}
+function timer(fn,delay,repeat){const id=++next;jobs.set(id,{fn,due:clock+delay,repeat});return id}
+async function tick(ms){const until=clock+ms;while(true){const first=[...jobs].sort((a,b)=>a[1].due-b[1].due)[0];if(!first||first[1].due>until)break;clock=first[1].due;if(first[1].repeat)first[1].due+=first[1].repeat;else jobs.delete(first[0]);first[1].fn();await new Promise(r=>setImmediate(r))}clock=until;await new Promise(r=>setImmediate(r))}
+class Recorder{static isTypeSupported(){return true}start(){this.state='recording'}stop(){this.state='inactive';this.ondataavailable({data:new Blob(['x'.repeat(300)])});queueMicrotask(()=>this.onstop())}}
+const synth={getVoices:()=>[{lang:'fr-FR'},{lang:'nl-BE'}],resume(){},cancel(){},speak(u){assert.equal(streams,0);speech.push(u.lang);u.onstart();timer(()=>u.onend(),500)}};
+const env={document:{getElementById:get,createElement:element,createTextNode:t=>t,addEventListener(){}},navigator:{onLine:true,mediaDevices:{async getUserMedia(){streams++;let stopped=false;return {getTracks:()=>[{stop(){if(!stopped){stopped=true;streams--}}}]}}}},speechSynthesis:synth,SpeechSynthesisUtterance:class{},MediaRecorder:Recorder,Blob,AbortController,URLSearchParams,performance:{now:()=>clock},Date:{now:()=>clock},setInterval:(f,d)=>timer(f,d,d),setTimeout:timer,clearInterval:id=>jobs.delete(id),clearTimeout:id=>jobs.delete(id),addEventListener(){},AudioContext:class{async resume(){}async close(){this.state='closed'}createAnalyser(){return {fftSize:128,getFloatTimeDomainData:a=>a.fill(sound?.2:0)}}createMediaStreamSource(){return {connect(){}}}},fetch:async url=>{requests.push(url);return {ok:true,json:()=>({text:'Bonjour',translation:'Hallo'})}}};
+env.window=env;
+(async()=>{vm.runInNewContext(fs.readFileSync(__dirname+'/translator-client.mjs','utf8'),env);get('talkFr').onclick();await tick(0);
+sound=true;await tick(400);sound=false;await tick(1500);assert.equal(requests.length,0);
+sound=true;await tick(350);sound=false;await tick(1950);assert.equal(requests.length,0);await tick(50);assert.equal(requests.length,1);
+await tick(750);assert.equal(streams,1);sound=true;await tick(300);sound=false;await tick(2000);await tick(750);assert.deepEqual(speech,['nl-BE','fr-FR']);assert(requests[1].endsWith('lang=nl'));get('stopTurn').onclick();await tick(2500);assert.equal(streams,0);assert.equal(requests.length,2);console.log('OK — simulation micro, reprise à 1,5 s, seuil exact de 2 s, alternance, lecture sans capture, arrêt.')})().catch(e=>{console.error(e);process.exitCode=1});

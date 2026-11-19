@@ -1,5 +1,5 @@
 import {preferences,preferenceClient} from './preferences.mjs';
-import {dailyVisits,recordVisit,dailyClient} from './daily-visits.mjs';
+import {dailyVisits,dailyClient} from './daily-visits.mjs';
 import {addresses} from './address-api.mjs';
 import {addressPage} from './address-page.mjs';
 import {readCookie} from './entry-ticket.mjs';
@@ -94,7 +94,6 @@ export function withDocumentPlan(worker,helpers){return {...worker,
   try{
    if(book||path==='/api/admin/daily-visits'||path==='/api/document-plan'||protectedFeature||isHome||isAdmin)plan=await accountPlan(request,env,helpers);
    if(path==='/api/admin/daily-visits')return await dailyVisits(env.DB,plan);
-   if(plan?.authenticated&&request.method==='GET'&&(isHome||path==='/api/document-plan'))ctx.waitUntil(recordVisit(env.DB,plan.owner));
    if(path==='/api/document-plan'){const {owner,...safe}=plan;return json({...safe,serverNow:Date.now()})}
    if(path==='/api/private-preferences')return await preferences(request,env.DB,plan);
    if(path==='/cs-private-preferences.js')return new Response('('+preferenceClient.toString()+')()',{headers:{'content-type':'text/javascript','cache-control':'no-cache'}});
